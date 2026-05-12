@@ -4,7 +4,7 @@ on:
   schedule:
     # DEBUG: ajaa joka minuutti
     # Kun debuggaus on valmis, vaihda takaisin: "0 7 * * *"
-    - cron: "* * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:  # Voit myös ajaa käsin GitHubissa
 
 permissions:
