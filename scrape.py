@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import json
 from datetime import datetime, timezone
 
-URL = "https://polttoaine.net/espoo"
+URL = "https://polttoaine.net/index.php"
 
 def scrape_prices():
     headers = {"User-Agent": "Mozilla/5.0 (compatible; bensahinnat-bot/1.0)"}
@@ -12,21 +12,17 @@ def scrape_prices():
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # Etsi rivi jossa lukee "Keskihinnat:" — se on suoraan sivulla ylimpänä
     keskihinnat_row = None
-    for row in soup.find_all("tr"):
-        cells = row.find_all("td")
-        for cell in cells:
-            if "Keskihinnat" in cell.get_text():
-                keskihinnat_row = cells
-                break
-        if keskihinnat_row:
+    rows = soup.find_all("tr")
+    for i, row in enumerate(rows):
+        if "keskihinnat" in row.get_text().lower():
+            if i + 1 < len(rows):
+                keskihinnat_row = rows[i + 1].find_all("td")
             break
 
     if not keskihinnat_row:
         raise ValueError("Keskihinnat-riviä ei löydy sivulta!")
 
-    # Kerää numeeriset arvot soluista
     prices = []
     for cell in keskihinnat_row:
         text = cell.get_text(strip=True).replace(",", ".")
@@ -43,7 +39,7 @@ def scrape_prices():
     result = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": URL,
-        "location": "Espoo",
+        "location": "Suomi (koko maa)",
         "prices": {
             "95": prices[0],
             "98": prices[1],
@@ -52,7 +48,6 @@ def scrape_prices():
     }
 
     return result
-
 
 if __name__ == "__main__":
     data = scrape_prices()
