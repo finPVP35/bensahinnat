@@ -2,16 +2,20 @@ const fs = require("fs");
 
 async function getPrices() {
     const res = await fetch("https://polttoaine.net");
-    const html = await res.text();
+    // Sivusto käyttää latin1-enkoodausta, täytyy muuntaa
+    const buffer = await res.arrayBuffer();
+    const html = new TextDecoder("latin1").decode(buffer);
 
-    const match = html.match(/<tr class="bg2">([\s\S]*?)<\/tr>/);
-
-    if (!match) throw new Error("Riviä ei löytynyt");
+    // Haetaan "Eilisen keskihinnat" -rivi taulukosta
+    // Rakenne: <tr class="bg2"><td ...></td><td class="Hinnat">2.141</td>...
+    const match = html.match(/Eilisen keskihinnat[\s\S]*?<tr[^>]*>([\s\S]*?)<\/tr>/);
+    if (!match) throw new Error("Eilisen keskihinnat -riviä ei löytynyt");
 
     const row = match[1];
+    const prices = [...row.matchAll(/<td[^>]*class="Hinnat"[^>]*>(.*?)<\/td>/g)]
+        .map(m => m[1].trim());
 
-    const prices = [...row.matchAll(/<td class="Hinnat">(.*?)<\/td>/g)]
-        .map(m => m[1]);
+    if (prices.length < 3) throw new Error(`Liian vähän hintoja löytyi: ${prices.length}`);
 
     return {
         "95E10": prices[0],
@@ -21,54 +25,19 @@ async function getPrices() {
 }
 
 async function main() {
-    const prices = await getPrices();
-
-    const data = {
-        paivitetty: new Date().toISOString(),
-        lahde: "polttoaine.net",
-
-        eilisen_keskihinnat: prices
-    };
-
-    fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
-
-    console.log("Päivitetty:", data);
-}
-
-main();const fs = require("fs");
-const cheerio = require("cheerio");
-
-async function getPrices() {
-    const res = await fetch("https://polttoaine.net");
-    const html = await res.text();
-
-    const $ = cheerio.load(html);
-
-    // ⚠️ NÄMÄ SELECTORIT PITÄÄ TARKISTAA SIVUSTOSTA
-    const diesel = $(".diesel-price").first().text().trim();
-    const e95 = $(".e95-price").first().text().trim();
-    const e98 = $(".e98-price").first().text().trim();
-
-    return {
-        "95E10": e95,
-        "98E5": e98,
-        "Diesel": diesel
-    };
-}
-
-async function main() {
-    const prices = await getPrices();
-
-    const data = {
-        paivitetty: new Date().toISOString(),
-        lahde: "polttoaine.net",
-
-        eilisen_keskihinnat: prices
-    };
-
-    fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
-
-    console.log("Päivitetty:", data);
+    try {
+        const prices = await getPrices();
+        const data = {
+            paivitetty: new Date().toISOString(),
+            lahde: "polttoaine.net",
+            eilisen_keskihinnat: prices
+        };
+        fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+        console.log("Päivitetty:", data);
+    } catch (err) {
+        console.error("Virhe:", err.message);
+        process.exit(1);
+    }
 }
 
 main();
