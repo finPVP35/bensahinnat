@@ -1,19 +1,37 @@
 const fs = require("fs");
+const cheerio = require("cheerio");
 
-const data = {
-    paivitetty: new Date().toISOString().split("T")[0],
-    lahde: "polttoaine.net",
+async function getPrices() {
+    const res = await fetch("https://polttoaine.net");
+    const html = await res.text();
 
-    eilisen_keskihinnat: {
-        "95E10": "2.141",
-        "98E5": "2.252",
-        "Diesel": "2.328"
-    }
-};
+    const $ = cheerio.load(html);
 
-fs.writeFileSync(
-    "data.json",
-    JSON.stringify(data, null, 2)
-);
+    // ⚠️ NÄMÄ SELECTORIT PITÄÄ TARKISTAA SIVUSTOSTA
+    const diesel = $(".diesel-price").first().text().trim();
+    const e95 = $(".e95-price").first().text().trim();
+    const e98 = $(".e98-price").first().text().trim();
 
-console.log("data.json päivitetty");
+    return {
+        "95E10": e95,
+        "98E5": e98,
+        "Diesel": diesel
+    };
+}
+
+async function main() {
+    const prices = await getPrices();
+
+    const data = {
+        paivitetty: new Date().toISOString(),
+        lahde: "polttoaine.net",
+
+        eilisen_keskihinnat: prices
+    };
+
+    fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+
+    console.log("Päivitetty:", data);
+}
+
+main();
