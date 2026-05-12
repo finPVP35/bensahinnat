@@ -1,9 +1,9 @@
 {
-  "paivitetty": "2026-05-12",
+  "paivitetty": "2026-05-12T21:54:03.360Z",
   "lahde": "polttoaine.net",
   "eilisen_keskihinnat": {
-    "95E10": "2.141",
-    "98E5": "2.252",
-    "Diesel": "2.328"
+    "95E10": "2.135",
+    "98E5": "2.243",
+    "Diesel": "2.331"
   }
 }
