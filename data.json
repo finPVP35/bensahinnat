@@ -1,1 +1,10 @@
-{}
+{
+  "updated": "ei vielä haettu",
+  "source": "https://polttoaine.net/espoo",
+  "location": "Espoo",
+  "prices": {
+    "95": null,
+    "98": null,
+    "diesel": null
+  }
+}
