@@ -2,8 +2,9 @@ name: Päivitä bensahinnat
 
 on:
   schedule:
-    # Ajaa joka päivä klo 07:00 UTC (= 09:00 tai 10:00 Suomen aikaa)
-    - cron: "0 7 * * *"
+    # DEBUG: ajaa joka minuutti
+    # Kun debuggaus on valmis, vaihda takaisin: "0 7 * * *"
+    - cron: "* * * * *"
   workflow_dispatch:  # Voit myös ajaa käsin GitHubissa
 
 permissions:
