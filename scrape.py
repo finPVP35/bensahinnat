@@ -1,50 +1,56 @@
-import requests
-from bs4 import BeautifulSoup
 import json
+import re
 from datetime import datetime, timezone
+from playwright.sync_api import sync_playwright
 
-URL = "https://polttoaine.net/index.php"
+URL = "https://www.hintatutka.net/?lang=fi"
+
+def parse_price(text):
+    text = text.replace(",", ".").replace("€/l", "").strip()
+    try:
+        val = float(text)
+        if 0.5 < val < 5.0:
+            return val
+    except ValueError:
+        pass
+    return None
 
 def scrape_prices():
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; bensahinnat-bot/1.0)"}
-    resp = requests.get(URL, headers=headers, timeout=15)
-    resp.raise_for_status()
+    prices = {"95": None, "98": None, "diesel": None}
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(URL, wait_until="networkidle", timeout=30000)
 
-    keskihinnat_row = None
-    rows = soup.find_all("tr")
-    for i, row in enumerate(rows):
-        if "keskihinnat" in row.get_text().lower():
-            if i + 1 < len(rows):
-                keskihinnat_row = rows[i + 1].find_all("td")
-            break
+        # Etsi "Keskiarvo tänään" tekstit ja niihin liittyvät hinnat
+        content = page.content()
+        browser.close()
 
-    if not keskihinnat_row:
-        raise ValueError("Keskihinnat-riviä ei löydy sivulta!")
+    # Hae hinnat regex:llä renderöidystä HTML:stä
+    # 95 E10
+    m = re.search(r'95 E10.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
+    if m:
+        prices["95"] = parse_price(m.group(1))
 
-    prices = []
-    for cell in keskihinnat_row:
-        text = cell.get_text(strip=True).replace(",", ".")
-        try:
-            val = float(text)
-            if 0.5 < val < 5.0:
-                prices.append(val)
-        except ValueError:
-            pass
+    # 98 E5
+    m = re.search(r'98 E5.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
+    if m:
+        prices["98"] = parse_price(m.group(1))
 
-    if len(prices) < 3:
-        raise ValueError(f"Löydettiin vain {len(prices)} hintaa, odotettiin 3")
+    # Diesel
+    m = re.search(r'Diesel.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
+    if m:
+        prices["diesel"] = parse_price(m.group(1))
+
+    if any(v is None for v in prices.values()):
+        raise ValueError(f"Kaikkia hintoja ei löydy: {prices}")
 
     result = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": URL,
         "location": "Suomi (koko maa)",
-        "prices": {
-            "95": prices[0],
-            "98": prices[1],
-            "diesel": prices[2],
-        }
+        "prices": prices
     }
 
     return result
