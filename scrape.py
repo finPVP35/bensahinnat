@@ -1,76 +1,55 @@
+import requests
+from bs4 import BeautifulSoup
 import json
-import re
 from datetime import datetime, timezone
-from playwright.sync_api import sync_playwright
 
-URL = "https://www.hintatutka.net/?lang=fi"
-
-def parse_price(text):
-    text = text.replace(",", ".").replace("€/l", "").strip()
-    try:
-        val = float(text)
-        if 0.5 < val < 5.0:
-            return val
-    except ValueError:
-        pass
-    return None
+URL = "https://polttoaine.net/index.php"
 
 def scrape_prices():
-    prices = {"95": None, "98": None, "diesel": None}
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; bensahinnat-bot/1.0)"}
+    resp = requests.get(URL, headers=headers, timeout=15)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(URL, wait_until="networkidle", timeout=30000)
+    keskihinnat_row = None
+    rows = soup.find_all("tr")
+    for i, row in enumerate(rows):
+        if "keskihinnat" in row.get_text().lower():
+            if i + 1 < len(rows):
+                keskihinnat_row = rows[i + 1].find_all("td")
+            break
 
-        # Odota että kortit latautuvat
-        page.wait_for_selector("section.dash-summary-grid", timeout=15000)
+    if not keskihinnat_row:
+        raise ValueError("Keskihinnat-riviä ei löydy sivulta!")
 
-        cards = page.query_selector_all("section.dash-summary-grid > *")
+    prices = []
+    for cell in keskihinnat_row:
+        text = cell.get_text(strip=True).replace(",", ".")
+        try:
+            val = float(text)
+            if 0.5 < val < 5.0:
+                prices.append(val)
+        except ValueError:
+            pass
 
-        for card in cards:
-            text = card.inner_text()
-
-            if "95 E10" in text:
-                fuel = "95"
-            elif "98 E5" in text:
-                fuel = "98"
-            elif "Diesel" in text:
-                fuel = "diesel"
-            else:
-                continue
-
-            # Etsi "Keskiarvo tänään" ja sitä seuraava hinta
-            lines = [l.strip() for l in text.splitlines() if l.strip()]
-            for i, line in enumerate(lines):
-                if "tänään" in line.lower():
-                    # Hinta on joko samalla rivillä tai seuraavalla
-                    for j in range(i, min(i+3, len(lines))):
-                        val = parse_price(lines[j])
-                        if val:
-                            prices[fuel] = val
-                            break
-                    break
-
-        browser.close()
-
-    if any(v is None for v in prices.values()):
-        raise ValueError(f"Kaikkia hintoja ei löydy: {prices}")
+    if len(prices) < 3:
+        raise ValueError(f"Löydettiin vain {len(prices)} hintaa, odotettiin 3")
 
     result = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": URL,
         "location": "Suomi (koko maa)",
-        "prices": prices
+        "prices": {
+            "95": prices[0],
+            "98": prices[1],
+            "diesel": prices[2],
+        }
     }
-
     return result
 
 if __name__ == "__main__":
     data = scrape_prices()
     print(json.dumps(data, indent=2, ensure_ascii=False))
-
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
     print("✅ data.json päivitetty!")
