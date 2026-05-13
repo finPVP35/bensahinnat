@@ -23,25 +23,36 @@ def scrape_prices():
         page = browser.new_page()
         page.goto(URL, wait_until="networkidle", timeout=30000)
 
-        # Etsi "Keskiarvo tänään" tekstit ja niihin liittyvät hinnat
-        content = page.content()
+        # Odota että kortit latautuvat
+        page.wait_for_selector("section.dash-summary-grid", timeout=15000)
+
+        cards = page.query_selector_all("section.dash-summary-grid > *")
+
+        for card in cards:
+            text = card.inner_text()
+
+            if "95 E10" in text:
+                fuel = "95"
+            elif "98 E5" in text:
+                fuel = "98"
+            elif "Diesel" in text:
+                fuel = "diesel"
+            else:
+                continue
+
+            # Etsi "Keskiarvo tänään" ja sitä seuraava hinta
+            lines = [l.strip() for l in text.splitlines() if l.strip()]
+            for i, line in enumerate(lines):
+                if "tänään" in line.lower():
+                    # Hinta on joko samalla rivillä tai seuraavalla
+                    for j in range(i, min(i+3, len(lines))):
+                        val = parse_price(lines[j])
+                        if val:
+                            prices[fuel] = val
+                            break
+                    break
+
         browser.close()
-
-    # Hae hinnat regex:llä renderöidystä HTML:stä
-    # 95 E10
-    m = re.search(r'95 E10.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
-    if m:
-        prices["95"] = parse_price(m.group(1))
-
-    # 98 E5
-    m = re.search(r'98 E5.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
-    if m:
-        prices["98"] = parse_price(m.group(1))
-
-    # Diesel
-    m = re.search(r'Diesel.*?Keskiarvo tänään.*?([\d,]+)\s*€/l', content, re.DOTALL)
-    if m:
-        prices["diesel"] = parse_price(m.group(1))
 
     if any(v is None for v in prices.values()):
         raise ValueError(f"Kaikkia hintoja ei löydy: {prices}")
