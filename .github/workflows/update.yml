@@ -19,7 +19,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Asenna riippuvuudet
-        run: pip install requests beautifulsoup4
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
       - name: Aja scraper
         run: python scrape.py
       - name: Commitoi ja pushaa data.json
