@@ -11,25 +11,17 @@ permissions:
 jobs:
   update-prices:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Asenna Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Asenna riippuvuudet
-        run: |
-          pip install playwright
-          playwright install chromium
-          playwright install-deps chromium
-
+        run: pip install requests beautifulsoup4
       - name: Aja scraper
         run: python scrape.py
-
       - name: Commitoi ja pushaa data.json
         run: |
           git config user.name "github-actions[bot]"
