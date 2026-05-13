@@ -1,10 +1,10 @@
 {
-  "updated": "2026-05-13T12:22:05Z",
-  "source": "https://polttoaine.net/index.php",
+  "updated": "2026-05-13T14:30:51Z",
+  "source": "https://www.hintatutka.net/?lang=fi",
   "location": "Suomi (koko maa)",
   "prices": {
-    "95": 2.136,
-    "98": 2.243,
-    "diesel": 2.331
+    "95": 2.076,
+    "98": 2.186,
+    "diesel": 2.284
   }
 }
