@@ -14,6 +14,13 @@ def parse_price(text):
         pass
     return None
 
+def load_existing():
+    try:
+        with open("data.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return None
+
 def scrape_prices():
     prices = {"95": None, "98": None, "diesel": None}
 
@@ -50,17 +57,26 @@ def scrape_prices():
     if any(v is None for v in prices.values()):
         raise ValueError(f"Kaikkia hintoja ei löydy: {prices}")
 
-    result = {
+    return {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": URL,
         "location": "Suomi (koko maa)",
         "prices": prices
     }
-    return result
 
 if __name__ == "__main__":
-    data = scrape_prices()
-    print(json.dumps(data, indent=2, ensure_ascii=False))
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    print("✅ data.json päivitetty!")
+    try:
+        data = scrape_prices()
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print("✅ data.json päivitetty!")
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"⚠️ Scrappaus epäonnistui: {e}")
+        existing = load_existing()
+        if existing:
+            print("ℹ️ Käytetään vanhoja arvoja, ei päivitetä data.json")
+        else:
+            print("❌ Ei vanhoja arvoja, data.json pysyy ennallaan")
+        # Poistutaan koodilla 0 jotta workflow ei kaadu
+        exit(0)
