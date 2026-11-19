@@ -1,10 +1,10 @@
 {
-  "updated": "2026-11-18T18:55:00Z",
+  "updated": "2026-11-19T08:39:30Z",
   "source": "https://www.hintatutka.net/?lang=fi",
   "location": "Suomi (koko maa)",
   "prices": {
-    "95": 2.083,
-    "98": 2.19,
-    "diesel": 2.444
+    "95": 2.009,
+    "98": 2.119,
+    "diesel": 2.435
   }
 }
